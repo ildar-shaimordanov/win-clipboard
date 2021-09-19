@@ -2,9 +2,15 @@ extern crate clipboard_win;
 use clipboard_win::get_clipboard_string;
 use clipboard_win::set_clipboard_string;
 
+#[cfg(feature = "atty")]
+extern crate atty;
+#[cfg(feature = "atty")]
+use atty::Stream;
+
 use std::env;
 use std::io::{self, Read, Write};
 
+#[cfg(not(feature = "atty"))]
 fn help() {
     println!("clipboard.exe – Access the Windows clipboard (copy/paste)");
     println!("");
@@ -16,6 +22,18 @@ fn help() {
     println!("    --paste - pastes clipboard content to stdout");
     println!("");
     println!("MIT © Sindre Sorhus");
+}
+
+#[cfg(feature = "atty")]
+fn help() {
+    println!(
+"clipboard.exe – Access the Windows clipboard (copy/paste)
+
+Usage:
+  [ clipboard | ] ... [ | clipboard ]
+
+MIT © Sindre Sorhus"
+    );
 }
 
 fn copy() -> std::io::Result<()> {
@@ -30,6 +48,7 @@ fn paste() -> std::io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(feature = "atty"))]
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -44,5 +63,18 @@ fn main() {
         "--copy" => copy().expect("Error: Could not copy to clipboard"),
         "--paste" => paste().expect("Error: Could not paste from clipboard"),
         _ => help(),
+    }
+}
+
+#[cfg(feature = "atty")]
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    if args.contains(&"--help".to_owned()) {
+        help();
+    } else if ! atty::is(Stream::Stdin) {
+        copy().expect("Error: Could not copy to clipboard");
+    } else {
+        paste().expect("Error: Could not paste from clipboard");
     }
 }
